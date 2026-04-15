@@ -1,0 +1,148 @@
+<#
+.SYNOPSIS
+    🔨 Build nRF52 Factory Erase firmware — produces .uf2, .elf and -ota.zip.
+
+.DESCRIPTION
+    Builds one or both PlatformIO environments for the nRF52840 target.
+    Artifacts are placed in the release\ directory.
+
+.PARAMETER Environment
+    s140_nrf52_611_softdevice   S140 v6.1.1 — RAK, LilyGo, Heltec Node T114
+    s140_nrf52_730_softdevice   S140 v7.3.0 — Seeed, ms24sf1, ME25LS01
+    all                         Build both environments (default)
+
+.PARAMETER Clean
+    Remove .pio\build\<env> before building.
+
+.PARAMETER Verbose
+    Pass -v to pio run for detailed compiler output.
+
+.EXAMPLE
+    .\scripts\windows\build.ps1
+    .\scripts\windows\build.ps1 -Environment s140_nrf52_611_softdevice
+    .\scripts\windows\build.ps1 -Clean
+    .\scripts\windows\build.ps1 -Environment all -Verbose
+#>
+[CmdletBinding()]
+param(
+    [ValidateSet('s140_nrf52_611_softdevice', 's140_nrf52_730_softdevice', 'all')]
+    [string]$Environment = 'all',
+    [switch]$Clean
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# ── Resolve project root (script lives in scripts\windows\) ───────────────────
+$ProjectRoot   = (Get-Item "$PSScriptRoot\..\..").FullName
+$ScriptsPython = Join-Path $ProjectRoot 'scripts\python'
+
+Set-Location $ProjectRoot
+
+# ── Colours ───────────────────────────────────────────────────────────────────
+$ESC = [char]27
+function Write-Header  { Write-Host "`n${ESC}[1;34m════════════════════════════════════════════${ESC}[0m`n${ESC}[1;34m  🔨  nRF52 Factory Erase — Build           ${ESC}[0m`n${ESC}[1;34m════════════════════════════════════════════${ESC}[0m" }
+function Write-Step    { param($t) Write-Host "`n${ESC}[0;36m▸  $t${ESC}[0m" }
+function Write-Ok      { param($t) Write-Host "${ESC}[0;32m✔  $t${ESC}[0m" }
+function Write-Err     { param($t) Write-Host "${ESC}[0;31m✖  $t${ESC}[0m" }
+function Write-Info    { param($t) Write-Host "${ESC}[0;34mℹ  $t${ESC}[0m" }
+function Write-Sep     { Write-Host "${ESC}[2m────────────────────────────────────────────${ESC}[0m" }
+
+$AllEnvs = @('s140_nrf52_611_softdevice', 's140_nrf52_730_softdevice')
+$Envs    = if ($Environment -eq 'all') { $AllEnvs } else { @($Environment) }
+
+# ── Prerequisites ─────────────────────────────────────────────────────────────
+if (-not (Get-Command pio -ErrorAction SilentlyContinue)) {
+    Write-Err 'pio not found. Install with: uv tool install platformio'
+    exit 1
+}
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+    Write-Err 'python not found.'
+    exit 1
+}
+
+# ── Version ───────────────────────────────────────────────────────────────────
+if (-not $env:APP_VERSION) {
+    $env:APP_VERSION = python "$ScriptsPython\buildinfo.py" long 2>$null
+    if (-not $env:APP_VERSION) {
+        # Fallback: parse version.properties directly
+        $props  = Get-Content version.properties
+        $major  = ($props | Select-String 'major').ToString().Split('=')[1].Trim()
+        $minor  = ($props | Select-String 'minor').ToString().Split('=')[1].Trim()
+        $build  = ($props | Select-String 'build').ToString().Split('=')[1].Trim()
+        $sha    = git rev-parse --short HEAD 2>$null
+        $env:APP_VERSION = "$major.$minor.$build.$sha"
+    }
+}
+
+$OutDir = Join-Path $ProjectRoot 'release'
+New-Item -ItemType Directory -Force $OutDir | Out-Null
+
+Write-Header
+Write-Info "Version  : $($env:APP_VERSION)"
+Write-Info "Targets  : $($Envs -join ', ')"
+Write-Info "Output   : $OutDir"
+Write-Sep
+
+$Passed = @(); $Failed = @()
+
+foreach ($Env in $Envs) {
+    Write-Step "Building $Env…"
+
+    if ($Clean) {
+        $cleanPath = ".pio\build\$Env"
+        if (Test-Path $cleanPath) {
+            Remove-Item -Recurse -Force $cleanPath
+            Write-Info "  Cleaned $cleanPath"
+        }
+    }
+
+    pio pkg update -e $Env --silent 2>$null
+
+    $pioArgs = @('run', '--environment', $Env)
+    if ($VerbosePreference -ne 'SilentlyContinue') { $pioArgs += '-v' }
+
+    & pio @pioArgs
+    if ($LASTEXITCODE -eq 0) {
+        $Base  = "nrf52_factory_erase-${Env}-$($env:APP_VERSION)"
+        $Build = ".pio\build\$Env"
+
+        Copy-Item "$Build\firmware.elf" "$OutDir\$Base.elf"
+
+        if (Test-Path "$Build\firmware.zip") {
+            Copy-Item "$Build\firmware.zip" "$OutDir\$Base-ota.zip"
+        }
+
+        # UF2 is generated by platformio-custom.py post-action;
+        # copy it, or regenerate with uf2conv.py if missing.
+        if (Test-Path "$Build\firmware.uf2") {
+            Copy-Item "$Build\firmware.uf2" "$OutDir\$Base.uf2"
+        } else {
+            python "$ScriptsPython\uf2conv.py" "$Build\firmware.hex" `
+                -c -o "$OutDir\$Base.uf2" -f 0xADA52840
+        }
+
+        $Passed += $Env
+        Write-Ok $Base
+    } else {
+        $Failed += $Env
+        Write-Err "Build failed for $Env"
+    }
+    Write-Sep
+}
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+Write-Host "`n${ESC}[1m── Summary ─────────────────────────────────────${ESC}[0m"
+foreach ($e in $Passed) { Write-Host "  ${ESC}[0;32m✔ PASS${ESC}[0m  $e" }
+foreach ($e in $Failed) { Write-Host "  ${ESC}[0;31m✖ FAIL${ESC}[0m  $e" }
+Write-Host ""
+
+Get-ChildItem $OutDir -Include *.uf2,*.elf,*.zip -Recurse |
+    Sort-Object Name |
+    Format-Table @{L='File';E={$_.Name}}, @{L='Size';E={"$([math]::Round($_.Length/1KB, 1)) KB"}} -AutoSize
+
+if ($Failed.Count -gt 0) {
+    Write-Err "$($Failed.Count) build(s) failed."
+    exit 1
+}
+Write-Ok "$($Passed.Count) build(s) complete → $OutDir"

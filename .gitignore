@@ -1,0 +1,37 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  .gitignore — nRF52 Factory Erase
+# ─────────────────────────────────────────────────────────────────────────────
+
+# PlatformIO build output
+.pio/
+
+# Release artifacts (produced by build scripts; not source-controlled)
+release/*.elf
+release/*.uf2
+release/*.zip
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.uv/
+
+# uv lock (optional to commit; uncomment if you want reproducible installs)
+# uv.lock
+
+# IDE / editors
+.vscode/
+*.code-workspace
+.idea/
+*.swp
+*~
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Don't ignore firmware/ directory (committed Nordic SoftDevice hex files)
+!firmware/
+!firmware/**
