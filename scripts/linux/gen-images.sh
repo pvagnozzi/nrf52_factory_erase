@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
-set -e 
+set -e
 
-# regen the design bins first
-cd design
-bin/generate-pngs.sh
-cd ..
+# NOTE: This script requires ImageMagick (convert) and Inkscape.
+# The design/generate-pngs.sh step is skipped here; run it separately if needed.
 
 # assumes 50 wide, 28 high
 convert design/logo/png/Mesh_Logo_Black_Small.png -background white -alpha Background src/graphics/img/icon.xbm

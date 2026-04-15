@@ -368,10 +368,8 @@ if __name__ == "__main__":
             sys.exit(1)
         file = open(args.file, "r")
 
-    addr2line = os.path.join(
-        os.path.abspath(os.path.expanduser(args.tool + TOOLS[args.platform])),
-        "bin/" + PLATFORMS[args.platform] + "-elf-addr2line",
-    )
+    toolchain_prefix = os.path.abspath(os.path.expanduser(args.tool + TOOLS[args.platform]))
+    addr2line = os.path.join(toolchain_prefix, PLATFORMS[args.platform] + "-elf-addr2line")
     if os.name == "nt":
         addr2line += ".exe"
     if not os.path.exists(addr2line):

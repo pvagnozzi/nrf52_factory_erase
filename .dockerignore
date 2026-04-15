@@ -1,0 +1,42 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  .dockerignore — nRF52 Factory Erase
+#  Excludes files that don't belong in the Docker build context.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Git metadata
+.git/
+.gitattributes
+.gitignore
+
+# VS Code / IDE
+.vscode/
+.devcontainer/
+*.code-workspace
+
+# PlatformIO build artefacts (large; not needed at build time)
+.pio/
+
+# Release artefacts (written by the build, not needed as input)
+release/*.elf
+release/*.uf2
+release/*.zip
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Documentation & assets (not needed for compilation)
+images/
+docs/
+*.md
+!README.md
+
+# CI / tooling config
+.github/
+.trunk/
+.editorconfig
+
+# OS artefacts
+.DS_Store
+Thumbs.db

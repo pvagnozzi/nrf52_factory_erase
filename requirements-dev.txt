@@ -1,0 +1,13 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  requirements-dev.txt — Python development tools
+#  Install:  pip3 install --user -r requirements-dev.txt
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Build system
+platformio>=6.1.15,<7.0
+
+# nRF52 DFU flashing tool
+nrfutil>=0.5.3
+
+# Python-based debug/flash probe support (SWD via J-Link, ST-Link, DAPLink)
+pyocd>=0.35.0

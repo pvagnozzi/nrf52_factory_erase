@@ -1,0 +1,63 @@
+{
+  "name": "nRF52 Factory Erase",
+
+  "build": {
+    "dockerfile": "../containers/devcontainer/Dockerfile",
+    "context": ".."
+  },
+
+  // ── VS Code customisations ────────────────────────────────────────────────
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // PlatformIO & embedded C/C++
+        "platformio.platformio-ide",
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "marus25.cortex-debug",
+        "dan-c-underwood.arm",
+        "zixuanwang.linkerscript",
+        "ms-vscode.hexeditor",
+
+        // Python (build scripts)
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+
+        // Code quality
+        "trunk.io",
+
+        // General productivity
+        "EditorConfig.EditorConfig",
+        "github.vscode-pull-request-github",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "trunk.io",
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "platformio-ide.customPATH": "/home/vscode/.local/bin",
+        "C_Cpp.default.compilerPath": "/usr/bin/arm-none-eabi-gcc",
+        "cortex-debug.armToolchainPath": "/usr/bin"
+      }
+    }
+  },
+
+  // ── USB access for SWD probes and serial flashing ─────────────────────────
+  "mounts": [
+    "source=/dev/bus/usb,target=/dev/bus/usb,type=bind,consistency=cached"
+  ],
+  "runArgs": ["--privileged"],
+
+  // ── Post-create: bootstrap PlatformIO packages ────────────────────────────
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  // ── Forward pyocd GDB server port (optional hardware debug) ───────────────
+  "forwardPorts": [3333, 4444],
+  "portsAttributes": {
+    "3333": { "label": "GDB server (pyocd / OpenOCD)" },
+    "4444": { "label": "Semihosting telnet" }
+  },
+
+  "remoteUser": "vscode"
+}

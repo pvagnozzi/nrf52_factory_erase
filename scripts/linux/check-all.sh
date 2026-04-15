@@ -4,7 +4,7 @@
 
 set -e
 
-VERSION=$(bin/buildinfo.py long)
+VERSION=$(scripts/python/buildinfo.py long)
 
 # The shell vars the build tool expects to find
 export APP_VERSION=$VERSION

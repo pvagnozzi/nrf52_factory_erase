@@ -2,8 +2,8 @@
 
 set -e
 
-VERSION=$(bin/buildinfo.py long)
-SHORT_VERSION=$(bin/buildinfo.py short)
+VERSION=$(scripts/python/buildinfo.py long)
+SHORT_VERSION=$(scripts/python/buildinfo.py short)
 
 OUTDIR=release
 
@@ -31,4 +31,4 @@ cp $DFUPKG $OUTDIR/$basename-ota.zip
 echo "Generating NRF52 uf2 file"
 SRCHEX=.pio/build/$1/firmware.hex
 
-bin/uf2conv.py $SRCHEX -c -o $OUTDIR/$basename.uf2 -f 0xADA52840
+scripts/python/uf2conv.py $SRCHEX -c -o $OUTDIR/$basename.uf2 -f 0xADA52840
