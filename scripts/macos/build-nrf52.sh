@@ -3,7 +3,7 @@
 #  build-nrf52.sh — Build nRF52 Factory Erase firmware
 #
 #  Usage:
-#    ./scripts/linux/build-nrf52.sh [OPTIONS] [ENVIRONMENT]
+#    ./scripts/macos/build-nrf52.sh [OPTIONS] [ENVIRONMENT]
 #
 #  OPTIONS:
 #    --clean     Remove .pio/build/<env> before building

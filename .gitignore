@@ -5,10 +5,9 @@
 # PlatformIO build output
 .pio/
 
-# Release artifacts (produced by build scripts; not source-controlled)
-release/*.elf
-release/*.uf2
-release/*.zip
+# Build artifacts and release packages (produced by scripts; not source-controlled)
+build/
+release/
 
 # Python caches
 __pycache__/

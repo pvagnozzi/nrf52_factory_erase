@@ -75,7 +75,7 @@ if (-not $env:APP_VERSION) {
     }
 }
 
-$OutDir = Join-Path $ProjectRoot 'release'
+$OutDir = Join-Path $ProjectRoot 'build'
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 
 Write-Header

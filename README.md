@@ -14,7 +14,41 @@ https://meshtastic.org/docs/getting-started/flashing-firmware/nrf52/nrf52-erase/
 Meshtastic_nRF52_factory_erase_v3_S140_7.3.0.uf2 
 Meshtastic_nRF52_factory_erase_v3_S140_6.1.0.uf2
 
-e.g
-./bin/build-nrf52.sh s140_nrf52_611_softdevice
+## Building
 
-then find files in release directory
+**Linux / macOS:**
+```bash
+./scripts/linux/build-nrf52.sh [--clean] [--verbose] [ENVIRONMENT]
+./scripts/macos/build-nrf52.sh [--clean] [--verbose] [ENVIRONMENT]
+```
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\windows\build.ps1 [-Clean] [-Verbose] [-Environment ENVIRONMENT]
+```
+
+`ENVIRONMENT` is one of `s140_nrf52_611_softdevice`, `s140_nrf52_730_softdevice`, or `all` (default).  
+Raw artifacts (`.uf2`, `.elf`, `-ota.zip`) are placed in the `build/` directory.
+
+## Release
+
+The release scripts run the build and package each environment's artifacts into a single ZIP under `release/`:
+
+```
+release/
+  nrf52_factory_erase-s140_nrf52_611_softdevice-<version>.zip
+  nrf52_factory_erase-s140_nrf52_730_softdevice-<version>.zip
+```
+
+Each ZIP contains the `.elf`, `.uf2`, and `-ota.zip` for that environment.
+
+**Linux / macOS:**
+```bash
+./scripts/linux/release-nrf52.sh [--clean] [--verbose] [ENVIRONMENT]
+./scripts/macos/release-nrf52.sh [--clean] [--verbose] [ENVIRONMENT]
+```
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\windows\release.ps1 [-Clean] [-Verbose] [-Environment ENVIRONMENT]
+```

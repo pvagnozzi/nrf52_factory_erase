@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Release — nRF52 Factory Erase
+#
+#  Triggered by a version tag (e.g. v1.0.0).
+#  Builds both softdevice variants, packages each into a ZIP under release/,
+#  and publishes them as assets on a GitHub Release.
+# ─────────────────────────────────────────────────────────────────────────────
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & release firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: pip install --no-cache-dir "platformio==6.1.15"
+
+      - name: Build & package all environments
+        run: bash scripts/linux/release-nrf52.sh all
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-build-${{ github.ref_name }}
+          path: build/
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.zip
+          generate_release_notes: true
