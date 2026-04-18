@@ -59,7 +59,8 @@ COPY --chown=builder:builder . .
 # Ensure output directories exist inside the container
 RUN mkdir -p build release
 
-ARG APP_VERSION=dev
-ENV APP_VERSION=${APP_VERSION}
+# APP_VERSION is injected at runtime via the container environment
+# (see containers/docker-compose.yml) so the image layer can be cached
+# and reused across versions.
 
 CMD ["bash", "scripts/linux/release-nrf52.sh", "all"]
