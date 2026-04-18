@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+#  pre-push — GitFlow branch protection
+#
+#  Blocks direct pushes to 'main' and 'develop'.
+#  All changes must go through a feature/release/hotfix branch and a PR.
+# ─────────────────────────────────────────────────────────────────────────────
+
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+PROTECTED_BRANCHES=("main" "develop")
+
+for BRANCH in "${PROTECTED_BRANCHES[@]}"; do
+    if [[ "${CURRENT_BRANCH}" == "${BRANCH}" ]]; then
+        echo ""
+        echo "  ✖  Direct push to '${BRANCH}' is not allowed."
+        echo ""
+        echo "  Please follow the GitFlow workflow:"
+        echo "    • New feature  →  git checkout -b feature/<name> develop"
+        echo "    • Bug fix      →  git checkout -b hotfix/<name> main"
+        echo "    • Release prep →  git checkout -b release/<major.minor> develop"
+        echo ""
+        echo "  Then open a Pull Request to merge back into '${BRANCH}'."
+        echo ""
+        exit 1
+    fi
+done

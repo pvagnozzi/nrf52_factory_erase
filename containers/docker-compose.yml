@@ -5,16 +5,20 @@
 #    docker compose -f containers/docker-compose.yml run --rm build
 #    docker compose -f containers/docker-compose.yml run --rm build \
 #      bash scripts/linux/release-nrf52.sh s140_nrf52_611_softdevice
+#
+#  Pass a custom version:
+#    APP_VERSION=1.2.3 docker compose -f containers/docker-compose.yml run --rm build
 # ─────────────────────────────────────────────────────────────────────────────
-version: "3.8"
 
 services:
   build:
     build:
       context: ..
       dockerfile: containers/build/Dockerfile
-      args:
-        APP_VERSION: ${APP_VERSION:-dev}
+    environment:
+      # APP_VERSION is passed at runtime so the image layer can be reused
+      # across versions without a full rebuild.
+      APP_VERSION: ${APP_VERSION:-dev}
     volumes:
       - ../build:/workspace/build
       - ../release:/workspace/release

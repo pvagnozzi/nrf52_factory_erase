@@ -1,13 +1,31 @@
 # ─────────────────────────────────────────────────────────────────────────────
 #  Release — nRF52 Factory Erase
 #
-#  Triggered by a version tag (e.g. v1.0.0).
-#  Builds both softdevice variants, packages each into a ZIP under release/,
-#  and publishes them as assets on a GitHub Release.
+#  Triggers:
+#    • Pull Request merged into 'main'   (primary — GitFlow release/hotfix)
+#    • Push of a version tag  v*.*.*     (fallback — manual / legacy)
+#
+#  Steps:
+#    1. Compute semantic version with GitVersion (GitFlow/v1)
+#    2. Update version.properties to match the computed release version
+#    3. Commit version.properties back to main  [skip ci]
+#    4. Create and push a git tag  v{semVer}
+#    5. Build & package both softdevice variants via Docker container
+#    6. Upload build artifacts as a workflow artifact
+#    7. Publish a GitHub Release with the generated ZIPs
+#
+#  Requirements:
+#    • The 'github-actions[bot]' must be allowed to push to 'main'
+#      (set in Settings → Branches → Branch protection → Allow bypass).
+#    • If 'main' is strictly protected, supply a PAT as RELEASE_TOKEN secret
+#      and replace ${{ secrets.GITHUB_TOKEN }} below.
 # ─────────────────────────────────────────────────────────────────────────────
 name: Release
 
 on:
+  pull_request:
+    types: [closed]
+    branches: [main]
   push:
     tags:
       - "v*.*.*"
@@ -19,31 +37,93 @@ jobs:
   release:
     name: Build & release firmware
     runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+      || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
 
     steps:
-      - name: Checkout
+      - name: Checkout (full history for GitVersion)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3
+        with:
+          versionSpec: "6.x"
+
+      - name: Compute version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v3
+        with:
+          useConfigFile: true
+          configFilePath: GitVersion.yml
+
+      - name: Show computed version
+        run: |
+          echo "SemVer    : ${{ steps.gitversion.outputs.semVer }}"
+          echo "FullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}"
+          echo "Major     : ${{ steps.gitversion.outputs.major }}"
+          echo "Minor     : ${{ steps.gitversion.outputs.minor }}"
+          echo "Patch     : ${{ steps.gitversion.outputs.patch }}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
-      - name: Install PlatformIO
-        run: pip install --no-cache-dir "platformio==6.1.15"
+      - name: Update version.properties
+        run: |
+          python scripts/python/update_version.py \
+            "${{ steps.gitversion.outputs.major }}" \
+            "${{ steps.gitversion.outputs.minor }}" \
+            "${{ steps.gitversion.outputs.patch }}"
 
-      - name: Build & package all environments
-        run: bash scripts/linux/release-nrf52.sh all
+      # Commit version.properties only when triggered by PR merge (not tag push)
+      - name: Commit version.properties
+        if: github.event_name == 'pull_request'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.properties
+          git diff --staged --quiet && echo "version.properties unchanged" && exit 0
+          git commit -m "chore: release v${{ steps.gitversion.outputs.semVer }} [skip ci]"
+          git push
+
+      # Create tag only when triggered by PR merge (tag push already has the tag)
+      - name: Create and push release tag
+        if: github.event_name == 'pull_request'
+        run: |
+          TAG="v${{ steps.gitversion.outputs.semVer }}"
+          if git rev-parse "${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists — skipping creation"
+          else
+            git tag "${TAG}"
+            git push origin "${TAG}"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & package firmware via Docker container
+        env:
+          APP_VERSION: ${{ steps.gitversion.outputs.semVer }}
+        run: |
+          mkdir -p build release
+          docker compose -f containers/docker-compose.yml run --rm build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-build-${{ github.ref_name }}
-          path: build/
+          name: firmware-release-${{ steps.gitversion.outputs.semVer }}
+          path: release/*.zip
           if-no-files-found: error
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.gitversion.outputs.semVer }}
+          name: "v${{ steps.gitversion.outputs.semVer }}"
           files: release/*.zip
           generate_release_notes: true
