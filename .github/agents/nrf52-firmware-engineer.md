@@ -43,6 +43,16 @@ platformio.ini [arduino_base]
 - `build_type = debug` in `nrf52.ini` — there is no separate release config.
 - UF2 family ID is always `0xADA52840`.
 - Version (`major.minor.build`) lives in `version.properties`; read it with `scripts/python/buildinfo.py long`.
+- In CI, **GitVersion** (GitFlow/v1 workflow, `GitVersion.yml`) computes APP_VERSION from git state.
+- `APP_VERSION` is passed to the Docker container as a **runtime environment variable**, not a build arg.
+
+### Versioning scripts
+| Script | Purpose |
+|---|---|
+| `scripts/python/buildinfo.py short` | Read `major.minor.build` from `version.properties` |
+| `scripts/python/buildinfo.py long` | Same + appends git SHA |
+| `scripts/python/bump_version.py` | Increment `build` by 1 |
+| `scripts/python/update_version.py M N B` | Set major/minor/build explicitly |
 
 ## Workflow guidelines
 
@@ -50,5 +60,7 @@ platformio.ini [arduino_base]
 - When adding a new board variant, you need: `boards/<name>.json`, `variants/<name>/platformio.ini`, `variants/<name>/variant.cpp`, `variants/<name>/variant.h`.
 - Always run `trunk fmt` after C++ source changes.
 - Run `pio check --environment s140_nrf52_611_softdevice` after source changes to catch static analysis issues.
-- Use `./scripts/linux/build-nrf52.sh <env>` to produce a full set of release artifacts.
-- Use Docker: `docker compose -f containers/docker-compose.yml run --rm build`
+- Use `./scripts/linux/build-nrf52.sh <env>` to produce a full set of build artifacts.
+- Use Docker for reproducible builds: `docker compose -f containers/docker-compose.yml run --rm build`
+- Follow GitFlow: feature branches from `develop`, hotfixes from `main`, never commit directly to `main` or `develop`.
+- Commit messages must follow Conventional Commits (`feat:`, `fix:`, `chore:`, etc.).

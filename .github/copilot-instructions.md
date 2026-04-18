@@ -11,12 +11,21 @@ This is the **nRF52 Factory Erase** firmware for the [Meshtastic](https://meshta
 ./scripts/linux/build-nrf52.sh s140_nrf52_611_softdevice
 ./scripts/linux/build-nrf52.sh s140_nrf52_730_softdevice
 ```
-Output artifacts (`.uf2`, `.elf`, `-ota.zip`) are placed in `release/`.
+Output artifacts (`.uf2`, `.elf`, `-ota.zip`) are placed in `build/`.
 
 **Build directly with PlatformIO:**
 ```bash
 pio run --environment s140_nrf52_611_softdevice
 pio run --environment s140_nrf52_730_softdevice
+```
+
+**Docker build (preferred for reproducible releases):**
+```bash
+# From project root — builds both variants
+docker compose -f containers/docker-compose.yml run --rm build
+
+# Custom version
+APP_VERSION=1.2.3 docker compose -f containers/docker-compose.yml run --rm build
 ```
 
 **Code formatting:**
@@ -60,7 +69,44 @@ Board definitions (RAM/flash sizes, USB IDs, softdevice flags) are in `boards/<v
 
 ### Version management
 
-Version is defined in `version.properties` (major/minor/build). Use `scripts/python/buildinfo.py long` or `scripts/python/buildinfo.py short` to read it. The build script exports `APP_VERSION` from this before calling `pio run`.
+Version is defined in `version.properties` (major/minor/build).
+
+```bash
+python scripts/python/buildinfo.py long    # 1.2.5.a1b2c3d
+python scripts/python/buildinfo.py short   # 1.2.5
+python scripts/python/update_version.py 1 2 5   # set all three parts
+```
+
+In CI, **GitVersion** (see `GitVersion.yml`) computes the semantic version from the GitFlow branch/tag state and overrides `APP_VERSION`.
+
+## GitFlow and CI/CD
+
+### Branch strategy
+
+| Branch | Purpose |
+|---|---|
+| `main` | Production releases |
+| `develop` | Integration |
+| `feature/*` | New features |
+| `release/*` | Release prep |
+| `hotfix/*` | Production fixes |
+
+### Pipelines
+
+| Workflow | Trigger | Action |
+|---|---|---|
+| `ci.yml` | Push to `develop`/`feature`/`release`/`hotfix`; PR to `main`/`develop` | GitVersion + Docker build |
+| `bump-version.yml` | PR merged → `develop` | Auto-increment `build` in `version.properties` |
+| `release.yml` | PR merged → `main` **or** tag `v*.*.*` | GitVersion, update `version.properties`, create tag, Docker release build, publish GitHub Release |
+
+### Git hooks
+
+```bash
+bash .github/hooks/setup.sh   # install once after cloning
+```
+
+- `commit-msg` — Conventional Commits validation
+- `pre-push` — blocks direct pushes to `main`/`develop`
 
 ## Copilot Configuration in this Repo
 
@@ -70,6 +116,7 @@ Version is defined in `version.properties` (major/minor/build). Use `scripts/pyt
 | Path instructions (PlatformIO) | `.github/instructions/platformio-config.instructions.md` | Applied when editing `*.ini` or `boards/*.json` |
 | Skill: build | `.github/skills/build-firmware/SKILL.md` | How to build firmware and locate artifacts |
 | Skill: analysis | `.github/skills/static-analysis/SKILL.md` | How to run cppcheck and handle suppressions |
+| Agent | `.github/agents/nrf52-firmware-engineer.md` | Embedded firmware specialist sub-agent |
 
 ### Dev Container
 
@@ -83,7 +130,6 @@ It pre-installs: PlatformIO, nrfutil, pyocd, ARM GCC toolchain, Trunk, minicom.
 # From project root
 docker compose -f containers/docker-compose.yml run --rm build
 ```
-| Agent | `.github/agents/nrf52-firmware-engineer.md` | Embedded firmware specialist sub-agent |
 
 ### Recommended MCP servers
 
@@ -102,3 +148,5 @@ Add via: `/mcp add` inside a Copilot CLI session.
 - **Debug tool default**: `stlink` at 4000 kHz; `pyocd` is an alternative (see `arch/nrf52/nrf52840.ini` for full debug config).
 - **`LFS_NO_ASSERT`** is defined globally to disable LittleFS assertions (see [PR #3818](https://github.com/meshtastic/firmware/pull/3818)).
 - **`build_type = debug`** is set in `nrf52.ini` — release builds are not a separate config; optimization is controlled via `-Os` in `arduino_base`.
+- **Commit messages** must follow Conventional Commits (`feat:`, `fix:`, `chore:`, etc.) — enforced by the `commit-msg` git hook.
+- **APP_VERSION** is passed to the Docker container as a **runtime environment variable** (not a build arg), enabling layer caching across versions.
