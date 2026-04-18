@@ -32,6 +32,7 @@
 
 workflow: GitFlow/v1
 
+next-version: 1.0.0
 tag-prefix: "[vV]"
 commit-message-incrementing: Enabled
 major-version-bump-message: "^(feat|refactor)(\\(\\w+\\))?!:|^BREAKING CHANGE"
