@@ -19,11 +19,10 @@
 #      nrf52-factory-erase-build bash scripts/linux/release-nrf52.sh s140_nrf52_611_softdevice
 #
 #  Via Compose:
-#    docker compose -f containers/docker-compose.yml run --rm build
+#    APP_VERSION=1.2.3 docker compose -f containers/docker-compose.yml run --rm build
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ── Stage 1: base image with Python + PlatformIO ─────────────────────────────
-FROM debian:bookworm-slim AS base
+FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Etc/UTC \
@@ -43,26 +42,10 @@ WORKDIR /workspace
 RUN pip3 install --user --no-cache-dir --break-system-packages "platformio==6.1.15"
 ENV PATH="/home/builder/.local/bin:${PATH}"
 
-# ── Stage 2: pre-warm PlatformIO package cache ────────────────────────────────
-FROM base AS packages
-
-# Copy only the files needed to resolve packages (improves layer caching).
-# scripts/python/ is needed because platformio.ini references platformio-custom.py
-# as an extra_scripts entry that PlatformIO resolves during config parsing.
-COPY --chown=builder:builder platformio.ini arch/ variants/ boards/ scripts/ ./
-RUN pio pkg install -e s140_nrf52_611_softdevice \
-    && pio pkg install -e s140_nrf52_730_softdevice
-
-# ── Stage 3: full build ───────────────────────────────────────────────────────
-FROM packages AS build
-
 COPY --chown=builder:builder . .
-
-# Ensure output directories exist inside the container
 RUN mkdir -p build release
 
-# APP_VERSION is injected at runtime via the container environment
-# (see containers/docker-compose.yml) so the image layer can be cached
-# and reused across versions.
+# APP_VERSION is injected at runtime (docker run -e APP_VERSION=1.2.3 ...)
+# so this image layer can be reused across releases without rebuilding.
 
 CMD ["bash", "scripts/linux/release-nrf52.sh", "all"]

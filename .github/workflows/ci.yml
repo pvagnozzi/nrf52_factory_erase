@@ -7,8 +7,9 @@
 #
 #  Steps:
 #    1. Compute version with GitVersion (GitFlow/v1 workflow)
-#    2. Build both softdevice variants via the Docker build container
-#    3. Upload raw firmware artifacts for inspection
+#    2. Update version.properties with the computed version
+#    3. Build both softdevice variants directly with PlatformIO
+#    4. Upload raw firmware artifacts for inspection
 # ─────────────────────────────────────────────────────────────────────────────
 name: CI
 
@@ -52,16 +53,18 @@ jobs:
           echo "FullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}"
           echo "Branch    : ${{ steps.gitversion.outputs.branchName }}"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
-      - name: Build firmware via Docker container
+      - name: Install PlatformIO
+        run: pip install --no-cache-dir "platformio==6.1.15"
+
+      - name: Build all environments
         env:
           APP_VERSION: ${{ steps.gitversion.outputs.fullSemVer }}
-        run: |
-          mkdir -p build release
-          docker compose -f containers/docker-compose.yml run --rm build \
-            bash scripts/linux/build-nrf52.sh all
+        run: bash scripts/linux/build-nrf52.sh all
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
