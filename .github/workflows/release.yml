@@ -111,6 +111,7 @@ jobs:
           APP_VERSION: ${{ steps.gitversion.outputs.semVer }}
         run: |
           mkdir -p build release
+          chmod 777 build release
           docker compose -f containers/docker-compose.yml run --rm build
 
       - name: Upload build artifacts
