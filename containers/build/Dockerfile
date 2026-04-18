@@ -46,8 +46,10 @@ ENV PATH="/home/builder/.local/bin:${PATH}"
 # ── Stage 2: pre-warm PlatformIO package cache ────────────────────────────────
 FROM base AS packages
 
-# Copy only the files needed to resolve packages (improves layer caching)
-COPY --chown=builder:builder platformio.ini arch/ variants/ boards/ ./
+# Copy only the files needed to resolve packages (improves layer caching).
+# scripts/python/ is needed because platformio.ini references platformio-custom.py
+# as an extra_scripts entry that PlatformIO resolves during config parsing.
+COPY --chown=builder:builder platformio.ini arch/ variants/ boards/ scripts/ ./
 RUN pio pkg install -e s140_nrf52_611_softdevice \
     && pio pkg install -e s140_nrf52_730_softdevice
 
