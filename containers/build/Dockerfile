@@ -40,7 +40,7 @@ RUN groupadd -g 1000 builder \
 USER builder
 WORKDIR /workspace
 
-RUN pip3 install --user --no-cache-dir "platformio==6.1.15"
+RUN pip3 install --user --no-cache-dir --break-system-packages "platformio==6.1.15"
 ENV PATH="/home/builder/.local/bin:${PATH}"
 
 # ── Stage 2: pre-warm PlatformIO package cache ────────────────────────────────
